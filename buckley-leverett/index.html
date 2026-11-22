@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Buckley–Leverett Lab</title>
+<meta name="description" content="Interactive Buckley–Leverett waterflood: fractional flow, Welge tangent, saturation profiles, tracer and polymer injection, with a 3D core.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<!--APP-START-->
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32" width="28" height="28"><rect x="2" y="9" width="28" height="14" rx="7" fill="var(--oil)"/><rect x="2" y="9" width="17" height="14" rx="7" fill="var(--water)"/><rect x="14" y="9" width="5" height="14" fill="var(--water)"/></svg>
+      </span>
+      <div>
+        <h1>Buckley–Leverett Lab</h1>
+        <p class="sub">Secondary &amp; enhanced oil recovery · displacement in linear systems</p>
+      </div>
+    </div>
+    <div class="top-right">
+    <div class="theme" role="radiogroup" aria-label="Colour theme">
+      <button type="button" id="theme-light" class="theme-btn" role="radio" data-theme-set="light" aria-checked="false" title="Light mode">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>Light</button>
+      <button type="button" id="theme-dark" class="theme-btn" role="radio" data-theme-set="dark" aria-checked="false" title="Dark mode">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" fill="currentColor"/></svg>Dark</button>
+      <button type="button" id="theme-auto" class="theme-btn" role="radio" data-theme-set="auto" aria-checked="true" title="Follow the system setting">Auto</button>
+    </div>
+    <div class="mode" role="radiogroup" aria-label="Injection mode">
+      <button type="button" id="mode-water" class="mode-btn" role="radio" data-mode="water" aria-checked="true"><span class="dot dot-water"></span>Waterflood</button>
+      <button type="button" id="mode-tracer" class="mode-btn" role="radio" data-mode="tracer" aria-checked="false"><span class="dot dot-tracer"></span>Water + tracer</button>
+      <button type="button" id="mode-polymer" class="mode-btn" role="radio" data-mode="polymer" aria-checked="false"><span class="dot dot-polymer"></span>Polymer</button>
+    </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- STEP 1: inputs -->
+    <aside class="inputs" id="inputs" aria-label="Input parameters">
+      <div class="inputs-head">
+        <h2><span class="step-tag">Step 1</span> Input parameters</h2>
+        <button type="button" class="ghost small" id="inputs-toggle" aria-expanded="true" aria-controls="inputs-body">Hide</button>
+      </div>
+      <div id="inputs-body">
+        <div class="reset-row"><button type="button" class="ghost small" id="reset">Reset to lecture values</button></div>
+        <div id="param-groups"></div>
+        <div class="derived" id="derived"></div>
+      </div>
+    </aside>
+
+    <!-- STEP 2: explorer -->
+    <main class="explorer" aria-label="Explorer">
+      <section class="stage">
+        <div class="stage-head">
+          <h2><span class="step-tag">Step 2</span> Linear reservoir flood</h2>
+          <div class="stage-opts">
+            <label class="chk"><input type="checkbox" id="opt-fractions" checked> Front face shows fluid fractions</label>
+          </div>
+        </div>
+        <div class="viewport" id="viewport">
+          <div class="legend" id="legend3d"></div>
+          <div class="phase-chip" id="phase-chip">Before breakthrough</div>
+          <div class="zoom" role="group" aria-label="3D view controls">
+            <button type="button" id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
+            <button type="button" id="zoom-out" aria-label="Zoom out" title="Zoom out">−</button>
+            <button type="button" id="zoom-reset" aria-label="Reset view" title="Reset view">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M4 9V4h5M20 15v5h-5M4 4l6 6M20 20l-6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <p class="view-hint">Drag to rotate · scroll or pinch to zoom · right-drag to pan</p>
+        </div>
+
+        <div class="timeline">
+          <button type="button" class="play" id="play" aria-label="Play">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path id="play-icon" d="M7 5l12 7-12 7z" fill="currentColor"/></svg>
+          </button>
+          <div class="slider-wrap">
+            <input type="range" id="time" min="0" max="1000" step="1" value="120" aria-label="Time">
+            <div class="ticks" id="time-ticks"></div>
+          </div>
+          <div class="time-readout" id="time-readout"></div>
+          <select id="speed" aria-label="Playback speed">
+            <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option>
+          </select>
+        </div>
+        <div class="jumps" id="jumps"></div>
+
+        <div class="swbar">
+          <label for="sw" class="sw-label">Sw explorer</label>
+          <input type="range" id="sw" min="0" max="1000" step="1" value="500">
+          <div class="sw-readout" id="sw-readout"></div>
+        </div>
+        <p class="sw-note" id="sw-note"></p>
+      </section>
+
+      <section class="kpis" id="kpis" aria-label="Key results"></section>
+
+      <nav class="tabs" role="tablist" aria-label="Views">
+        <button type="button" role="tab" id="tab-plots" aria-selected="true" data-tab="plots">Plots</button>
+        <button type="button" role="tab" id="tab-calc" aria-selected="false" data-tab="calc">Calculation steps</button>
+        <button type="button" role="tab" id="tab-theory" aria-selected="false" data-tab="theory">Model &amp; assumptions</button>
+        <span class="tabs-spacer"></span>
+        <button type="button" class="ghost small" id="pin">Pin as baseline</button>
+      </nav>
+
+      <section class="panel" id="panel-plots" role="tabpanel" aria-labelledby="tab-plots">
+        <div class="plots">
+          <figure class="plot wide">
+            <figcaption><b>Saturation profile</b> <span>Sw(x) at the selected time</span>
+              <label class="chk"><input type="checkbox" id="opt-raw"> Show raw (folded) construction</label></figcaption>
+            <div id="p-profile" class="pdiv"></div>
+          </figure>
+          <figure class="plot"><figcaption><b>Fractional flow</b> <span>fw(Sw) and tangent constructions</span></figcaption><div id="p-fw" class="pdiv"></div></figure>
+          <figure class="plot"><figcaption><b>Relative permeability</b> <span>Corey model</span></figcaption><div id="p-kr" class="pdiv"></div></figure>
+          <figure class="plot"><figcaption><b>Slope of fw</b> <span>dfw/dSw: saturation-wave speed per u</span></figcaption><div id="p-dfw" class="pdiv"></div></figure>
+          <figure class="plot"><figcaption><b>Distance–time diagram</b> <span>paths of constant Sw and of the fronts</span></figcaption><div id="p-xt" class="pdiv"></div></figure>
+          <figure class="plot"><figcaption><b>Outlet history</b> <span>what the producer sees</span></figcaption><div id="p-outlet" class="pdiv"></div></figure>
+          <figure class="plot"><figcaption><b>Cumulative volumes</b> <span>injected, oil and water produced</span></figcaption><div id="p-prod" class="pdiv"></div></figure>
+          <figure class="plot"><figcaption><b>Oil recovery factor</b> <span>Np / original oil in place</span></figcaption><div id="p-rf" class="pdiv"></div></figure>
+          <figure class="plot"><figcaption><b>Pressure drop</b> <span>Δp across the core at constant qt</span></figcaption><div id="p-dp" class="pdiv"></div></figure>
+        </div>
+      </section>
+
+      <section class="panel" id="panel-calc" role="tabpanel" aria-labelledby="tab-calc" hidden>
+        <div id="calc" class="calc"></div>
+      </section>
+
+      <section class="panel" id="panel-theory" role="tabpanel" aria-labelledby="tab-theory" hidden>
+        <div id="theory" class="calc"></div>
+      </section>
+
+      <footer class="foot">
+        Equations and worked numbers follow the lecture <i>Buckley–Leverett waterflooding: displacement in linear systems</i> (A. Kazemi). Core A defaults reproduce its results.
+      </footer>
+    </main>
+  </div>
+</div>
+<!--APP-END-->
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
